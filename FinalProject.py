@@ -5,10 +5,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 
-# Load your dataset (replace 'movies_dataset.csv' with your file)
+# Load dataset
 df = pd.read_csv('movies_dataset.csv')
-
-# Display the first few rows
 print(df.head())
 
 # --- Conjecture 1: Genre Impact on Box Office Revenue ---
