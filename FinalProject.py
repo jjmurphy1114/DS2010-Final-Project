@@ -2,135 +2,140 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 
 # Load the dataset
 df = pd.read_csv('CleanedMovieSet.csv')
 
-# Convert revenue and budget columns to numeric (remove commas and dollar signs)
+# # Convert revenue and budget columns to numeric (remove commas and dollar signs)
 df['revenue'] = df['revenue'].replace('[\$,]', '', regex=True).astype(float)
 df['budget'] = df['budget'].replace('[\$,]', '', regex=True).astype(float)
-
-# Display the first few rows
-print(df.head())
 
 # Preprocessing: Extract necessary columns
 df['genres'] = df['genres'].str.split(', ').str[0]  # Use the first genre listed
 df = df.rename(columns={
-    'vote_average': 'AudienceRating',
     'vote_count': 'numVotes',
     'budget': 'Budget',
     'revenue': 'Revenue',
-    'averageRating': 'CriticRating'
 })
 
 # Conjecture 1: Genre Impact on Box Office Revenue
-# One-hot encode the Genre column
-genre_dummies = pd.get_dummies(df['genres'], drop_first=True)
+def graph_conjecture_1():
+    # Remove rows with missing or invalid runtime and revenue values
+    runtime_data = df[['runtime', 'Revenue']].dropna()
+    runtime_data = runtime_data[runtime_data['Revenue'] > 0]
 
-# Combine the one-hot encoded genres with the dataset
-df = pd.concat([df, genre_dummies], axis=1)
+    # Prepare features (runtime) and target (revenue)
+    X_runtime = runtime_data[['runtime']]
+    y_revenue = runtime_data['Revenue']
 
-# Select revenue as the target and genres as features
-X_genre = genre_dummies
-y_revenue = df['Revenue']
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X_runtime, y_revenue, test_size=0.2, random_state=42)
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_genre, y_revenue, test_size=0.2, random_state=42)
+    # Train the linear regression model
+    model_runtime = LinearRegression()
+    model_runtime.fit(X_train, y_train)
 
-# Train a Linear Regression model
-model_genre = LinearRegression()
-model_genre.fit(X_train, y_train)
+    # Evaluate the model
+    y_pred = model_runtime.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    print("Conjecture 1 (Runtime): R2 Score =", r2)
 
-# Predict and evaluate the model
-y_pred = model_genre.predict(X_test)
-print("Genre Model R2 Score:", r2_score(y_test, y_pred))
+    # Plot the actual vs predicted data
+    plt.figure(figsize=(10, 6))
+    plt.scatter(X_runtime, y_revenue, alpha=0.6, label="Actual Data")
+    plt.plot(X_runtime, model_runtime.predict(X_runtime), color='red', label="Best Fit Line")
+    plt.title('Movie Runtime vs Box Office Revenue')
+    plt.xlabel('Runtime (minutes)')
+    plt.ylabel('Revenue (Millions $)')
+    plt.legend()
+    plt.show()
 
-# Display feature importance
-coef_genre = pd.DataFrame(model_genre.coef_, X_genre.columns, columns=['Coefficient'])
-print("Genre Coefficients:\n", coef_genre)
 
-# Conjecture 2: Ratings (Audience and Critical) Correlation with Revenue
-# Select ratings as features and revenue as target
-X_ratings = df[['AudienceRating', 'CriticRating']]
-y_revenue = df['Revenue']
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_ratings, y_revenue, test_size=0.2, random_state=42)
 
-# Train a Linear Regression model
-model_ratings = LinearRegression()
-model_ratings.fit(X_train, y_train)
+# Conjecture 2: Audience Rating Correlation with Revenue
+def graph_conjecture_2():
+    # Remove rows with missing or invalid Rating and Revenue values
+    ratings_data = df[['averageRating', 'Revenue']].dropna()  # Include Revenue in the filtered data
+    ratings_data = ratings_data[ratings_data['Revenue'] > 0]  # Ensure only positive Revenue values
 
-# Predict and evaluate the model
-y_pred = model_ratings.predict(X_test)
-print("Ratings Model R2 Score:", r2_score(y_test, y_pred))
+    # Prepare features (Rating) and target (Revenue)
+    X_ratings = ratings_data[['averageRating']]
+    y_revenue = ratings_data['Revenue']
 
-# Display feature importance
-coef_ratings = pd.DataFrame(model_ratings.coef_, X_ratings.columns, columns=['Coefficient'])
-print("Ratings Coefficients:\n", coef_ratings)
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X_ratings, y_revenue, test_size=0.2, random_state=42)
+
+    # Train the linear regression model
+    model_ratings = LinearRegression()
+    model_ratings.fit(X_train, y_train)
+
+    # Evaluate the model
+    y_pred = model_ratings.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    print("Conjecture 2 (Rating): R2 Score =", r2)
+
+    # Plot the actual vs predicted revenue for averageRating
+    plt.figure(figsize=(10, 6))
+    plt.scatter(ratings_data['averageRating'], ratings_data['Revenue'], alpha=0.6, label="Actual Data")
+    plt.plot(
+        ratings_data['averageRating'],
+        model_ratings.predict(ratings_data[['averageRating']]),
+        color='red',
+        label="Prediction Line"
+    )
+    plt.title('Rating vs Revenue')
+    plt.xlabel('Rating')
+    plt.ylabel('Revenue (Millions $)')
+    plt.legend()
+    plt.show()
+
 
 # Conjecture 3: Budget Impact on Revenue with Diminishing Returns
-# Use budget and its quadratic term as features
-df['BudgetSquared'] = df['Budget'] ** 2
-X_budget = df[['Budget', 'BudgetSquared']]
-y_revenue = df['Revenue']
+def graph_conjecture_3():
+    df['BudgetSquared'] = df['Budget'] ** 2
+    X_budget = df[['Budget', 'BudgetSquared']]
+    y_revenue = df['Revenue']
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_budget, y_revenue, test_size=0.2, random_state=42)
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X_budget, y_revenue, test_size=0.2, random_state=42)
 
-# Train a Linear Regression model
-model_budget = LinearRegression()
-model_budget.fit(X_train, y_train)
+    # Train model
+    model_budget = LinearRegression()
+    model_budget.fit(X_train, y_train)
 
-# Predict and evaluate the model
-y_pred = model_budget.predict(X_test)
-print("Budget Model R2 Score:", r2_score(y_test, y_pred))
+    # Evaluate model
+    y_pred = model_budget.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    print("Conjecture 3 (Budget): R2 Score =", r2)
 
-# Display feature importance
-coef_budget = pd.DataFrame(model_budget.coef_, X_budget.columns, columns=['Coefficient'])
-print("Budget Coefficients:\n", coef_budget)
+    # Sort data for a smooth prediction line
+    df_sorted = df.sort_values(by='Budget')
+    predicted_revenue = model_budget.predict(df_sorted[['Budget', 'BudgetSquared']])
 
-# Sort data by budget to ensure a smooth line
-df_sorted = df.sort_values(by='Budget')
+    # Plot actual vs predicted
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df['Budget'], df['Revenue'], alpha=0.6, label='Actual Data')
+    plt.plot(df_sorted['Budget'], predicted_revenue, color='red', label='Prediction')
+    plt.title('Budget vs Revenue with Predicted Line')
+    plt.xlabel('Budget')
+    plt.ylabel('Revenue')
+    plt.legend()
+    plt.show()
 
-# Generate predictions for the sorted data
-predicted_revenue = model_budget.predict(df_sorted[['Budget', 'BudgetSquared']])
-
-# Plot the actual vs predicted revenue
-plt.figure(figsize=(10, 6))
-plt.scatter(df['Budget'], df['Revenue'], label='Actual Data', alpha=0.6)
-plt.plot(df_sorted['Budget'], predicted_revenue, color='red', label='Model Prediction')
-plt.xlabel('Budget (Millions $)')
-plt.ylabel('Revenue (Millions $)')
-plt.legend()
-plt.title('Budget vs Revenue with Predicted Line')
-plt.show()
-
-# Predictions for New Data
-# Example new data for predictions
-new_data = {
-    'genres': ['Action', 'Horror'],  # First genre in the list
-    'AudienceRating': [7.5, 6.8],
-    'CriticRating': [80, 65],
-    'Budget': [50_000_000, 10_000_000]
-}
-
-new_df = pd.DataFrame(new_data)
-
-# One-hot encode genres for predictions
-genre_features = pd.get_dummies(new_df['genres'], drop_first=True)
-genre_features = genre_features.reindex(columns=genre_dummies.columns, fill_value=0)
-
-# Add quadratic budget term
-new_df['BudgetSquared'] = new_df['Budget'] ** 2
-
-# Predictions
-genre_prediction = model_genre.predict(genre_features)
-ratings_prediction = model_ratings.predict(new_df[['AudienceRating', 'CriticRating']])
-budget_prediction = model_budget.predict(new_df[['Budget', 'BudgetSquared']])
-
-print("Predicted Revenue from Genre Model:", genre_prediction)
-print("Predicted Revenue from Ratings Model:", ratings_prediction)
-print("Predicted Revenue from Budget Model:", budget_prediction)
+# Prompt user to select a conjecture to visualize
+while True:
+    user_input = input("Enter 1 to visualize Genre impact, 2 for  Ratings impact, or 3 for Budget impact (or 'exit' to quit): ")
+    if user_input == '1':
+        graph_conjecture_1()
+    elif user_input == '2':
+        graph_conjecture_2()
+    elif user_input == '3':
+        graph_conjecture_3()
+    elif user_input.lower() == 'exit':
+        print("Exiting...")
+        break
+    else:
+        print("Invalid input. Please enter 1, 2, 3, or 'exit'.")

@@ -1,2 +1,12 @@
-Please run the command:
+Please run the command to install required dependences:
+
 pip install requirements.txt
+
+Then, run the FinalProject.py file and input the following:
+
+1 for Predicted Revenue from Runtime
+2 for Predicted Revenue from Average Rating
+3 for Predicted Revenue from Budget
+Or exit
+
+The R2 value and all coefficients for each indiviudal conjecture will be displayed in the terminal after being selected
